@@ -7,6 +7,7 @@ import torch
 from PIL import Image
 import imageio
 import matplotlib.pyplot as plt
+import time
 
 from gma.network import RAFTGMA
 from gma.utils import flow_viz
@@ -53,6 +54,7 @@ def demo(args):
     padder = InputPadder(frame_previous.shape)
     # frame_previous = padder.pad(frame_previous)[0]
     frame_counter = 0
+    processed_frame_counter = 0
 
     batch = []
     batch_frames = []
@@ -64,6 +66,8 @@ def demo(args):
     )
 
     all_rad_max = []
+
+    start = time.time()
 
     with torch.no_grad():
         while ret:
@@ -82,7 +86,8 @@ def demo(args):
                 frame_counter += 1
 
             if len(batch) > 1:
-                print(f"Processing frames {min(batch_frames):04d} - {max(batch_frames):04d} (#frames = {len(batch)})")
+                print(f"Processing frames {min(batch_frames):04d} - {max(batch_frames):04d} (#frames = {len(batch)}, "
+                      f"{processed_frame_counter / (time.time() - start)} FPS)")
 
                 batch_previous = torch.cat(batch[:-1])
                 batch_current = torch.cat(batch[1:])
@@ -94,8 +99,11 @@ def demo(args):
                     video_writer.write(f)
                     all_rad_max.append(rad_max)
 
+                processed_frame_counter += len(batch) - 1
+
                 batch = batch[-1:]
                 batch_frames = batch_frames[-1:]
+
 
             if not ret:
                 break
