@@ -60,7 +60,7 @@ def demo(args):
     batch_frames = []
 
     video_writer = cv2.VideoWriter(
-        os.path.join(args.path, "flow_out.mp4"),
+        os.path.join(args.path, "flow_out_wtf.mp4"),
         cv2.VideoWriter_fourcc(*"mp4v"),
         60.0 / args.subsampling_factor, (800, 600), True,
     )
@@ -99,8 +99,9 @@ def demo(args):
 
                 start_data_saving_time = time.time()
                 flo = flow_up.permute(0, 2, 3, 1).cpu().numpy()
-                for f in flo:
+                for f_idx, f in enumerate(flo):
                     f, rad_max = flow_viz.flow_to_image(f, clip_magnitude=args.flow_max)
+                    cv2.imwrite(os.path.join(args.path, args.model_name, f"{processed_frame_counter+f_idx:04d}.png"), f)
                     video_writer.write(f)
                     all_rad_max.append(rad_max)
                 data_saving_time += time.time() - start_data_saving_time
@@ -115,6 +116,9 @@ def demo(args):
 
                 batch = batch[-1:]
                 batch_frames = batch_frames[-1:]
+
+            if processed_frame_counter >= 80:
+                break
 
             if not ret:
                 break
