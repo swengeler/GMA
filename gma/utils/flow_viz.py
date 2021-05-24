@@ -110,7 +110,7 @@ def flow_uv_to_colors(u, v, convert_to_bgr=False, color_depth=8):
     return flow_image
 
 
-def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False, color_depth=8):
+def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False, color_depth=8, clip_magnitude=None):
     """
     Expects a two dimensional flow image of shape.
 
@@ -126,13 +126,20 @@ def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False, color_depth=8):
     assert flow_uv.shape[2] == 2, 'input flow must have shape [H,W,2]'
     if clip_flow is not None:
         flow_uv = np.clip(flow_uv, 0, clip_flow)
-    u = flow_uv[:,:,0]
-    v = flow_uv[:,:,1]
+    u = flow_uv[:, :, 0]
+    v = flow_uv[:, :, 1]
     rad = np.sqrt(np.square(u) + np.square(v))
     rad_max = np.max(rad)
-    if clip_flow is not None:
-        rad_max = clip_flow
     epsilon = 1e-5
-    u = u / (rad_max + epsilon)
-    v = v / (rad_max + epsilon)
+    if clip_magnitude is not None:
+        rad_max = clip_magnitude
+        where = rad >= clip_magnitude
+        clipped_rad = rad[where]
+        u[where] /= clipped_rad + epsilon
+        v[where] /= clipped_rad + epsilon
+        u[~where] /= rad_max + epsilon
+        v[~where] /= rad_max + epsilon
+    else:
+        u = u / (rad_max + epsilon)
+        v = v / (rad_max + epsilon)
     return flow_uv_to_colors(u, v, convert_to_bgr, color_depth), rad_max
