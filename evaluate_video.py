@@ -68,6 +68,9 @@ def demo(args):
     all_rad_max = []
 
     start = time.time()
+    data_loading_time = 0
+    data_saving_time = 0
+    inference_time = 0
 
     with torch.no_grad():
         while ret:
@@ -77,33 +80,41 @@ def demo(args):
                     break
 
                 if frame_counter % args.subsampling_factor == 0:
+                    start_data_loading_time = time.time()
                     # print(f"Loading (flow) frame {frame_counter:03d}")
                     frame_current = convert_frame(frame_current, device)
                     frame_current = padder.pad(frame_current)[0]
                     batch.append(frame_current)
                     batch_frames.append(frame_counter)
+                    data_loading_time += time.time() - start_data_loading_time
 
                 frame_counter += 1
 
             if len(batch) > 1:
-                print(f"Processing frames {min(batch_frames):04d} - {max(batch_frames):04d} (#frames = {len(batch)}, "
-                      f"{processed_frame_counter / (time.time() - start)} FPS)")
-
+                start_inference_time = time.time()
                 batch_previous = torch.cat(batch[:-1])
                 batch_current = torch.cat(batch[1:])
                 flow_low, flow_up = model(batch_previous, batch_current, iters=12, test_mode=True)
+                inference_time += time.time() - start_inference_time
 
+                start_data_saving_time = time.time()
                 flo = flow_up.permute(0, 2, 3, 1).cpu().numpy()
                 for f in flo:
                     f, rad_max = flow_viz.flow_to_image(f, clip_flow=args.flow_max)
                     video_writer.write(f)
                     all_rad_max.append(rad_max)
+                data_saving_time += time.time() - start_data_saving_time
 
                 processed_frame_counter += len(batch) - 1
 
+                time_total = time.time() - start
+                print(f"Processed frames {min(batch_frames):04d} - {max(batch_frames):04d} (#frames = {len(batch)}, "
+                      f"{processed_frame_counter / time_total:02.4f} FPS) - Time spent on loading, inference, saving: "
+                      f"{data_loading_time / time_total * 100:02.2f}%, {inference_time / time_total * 100:02.2f}%, "
+                      f"{data_saving_time / time_total * 100:02.2f}%")
+
                 batch = batch[-1:]
                 batch_frames = batch_frames[-1:]
-
 
             if not ret:
                 break
