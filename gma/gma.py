@@ -1,5 +1,6 @@
 import torch
 from torch import nn, einsum
+
 from einops import rearrange
 
 
@@ -33,13 +34,13 @@ class RelPosEmb(nn.Module):
 
 class Attention(nn.Module):
     def __init__(
-        self,
-        *,
-        args,
-        dim,
-        max_pos_size = 100,
-        heads = 4,
-        dim_head = 128,
+            self,
+            *,
+            args,
+            dim,
+            max_pos_size=100,
+            heads=4,
+            dim_head=128,
     ):
         super().__init__()
         self.args = args
@@ -78,11 +79,11 @@ class Attention(nn.Module):
 
 class Aggregate(nn.Module):
     def __init__(
-        self,
-        args,
-        dim,
-        heads = 4,
-        dim_head = 128,
+            self,
+            args,
+            dim,
+            heads=4,
+            dim_head=128,
     ):
         super().__init__()
         self.args = args

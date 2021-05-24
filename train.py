@@ -1,6 +1,6 @@
 from __future__ import print_function, division
 import sys
-sys.path.append('core')
+sys.path.append('gma')
 
 import argparse
 import os

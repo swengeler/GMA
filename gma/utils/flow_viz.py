@@ -17,7 +17,8 @@
 
 import numpy as np
 
-def make_colorwheel():
+
+def make_colorwheel(color_depth=8):
     """
     Generates a color wheel for optical flow visualization as presented in:
         Baker et al. "A Database and Evaluation Methodology for Optical Flow" (ICCV, 2007)
@@ -41,33 +42,35 @@ def make_colorwheel():
     colorwheel = np.zeros((ncols, 3))
     col = 0
 
+    max_value = 2 ** color_depth - 1
+
     # RY
-    colorwheel[0:RY, 0] = 255
-    colorwheel[0:RY, 1] = np.floor(255*np.arange(0,RY)/RY)
+    colorwheel[0:RY, 0] = max_value
+    colorwheel[0:RY, 1] = np.floor(max_value*np.arange(0,RY)/RY)
     col = col+RY
     # YG
-    colorwheel[col:col+YG, 0] = 255 - np.floor(255*np.arange(0,YG)/YG)
-    colorwheel[col:col+YG, 1] = 255
+    colorwheel[col:col+YG, 0] = max_value - np.floor(max_value*np.arange(0,YG)/YG)
+    colorwheel[col:col+YG, 1] = max_value
     col = col+YG
     # GC
-    colorwheel[col:col+GC, 1] = 255
-    colorwheel[col:col+GC, 2] = np.floor(255*np.arange(0,GC)/GC)
+    colorwheel[col:col+GC, 1] = max_value
+    colorwheel[col:col+GC, 2] = np.floor(max_value*np.arange(0,GC)/GC)
     col = col+GC
     # CB
-    colorwheel[col:col+CB, 1] = 255 - np.floor(255*np.arange(CB)/CB)
-    colorwheel[col:col+CB, 2] = 255
+    colorwheel[col:col+CB, 1] = max_value - np.floor(max_value*np.arange(CB)/CB)
+    colorwheel[col:col+CB, 2] = max_value
     col = col+CB
     # BM
-    colorwheel[col:col+BM, 2] = 255
-    colorwheel[col:col+BM, 0] = np.floor(255*np.arange(0,BM)/BM)
+    colorwheel[col:col+BM, 2] = max_value
+    colorwheel[col:col+BM, 0] = np.floor(max_value*np.arange(0,BM)/BM)
     col = col+BM
     # MR
-    colorwheel[col:col+MR, 2] = 255 - np.floor(255*np.arange(MR)/MR)
-    colorwheel[col:col+MR, 0] = 255
+    colorwheel[col:col+MR, 2] = max_value - np.floor(max_value*np.arange(MR)/MR)
+    colorwheel[col:col+MR, 0] = max_value
     return colorwheel
 
 
-def flow_uv_to_colors(u, v, convert_to_bgr=False):
+def flow_uv_to_colors(u, v, convert_to_bgr=False, color_depth=8):
     """
     Applies the flow color wheel to (possibly clipped) flow components u and v.
 
@@ -82,8 +85,9 @@ def flow_uv_to_colors(u, v, convert_to_bgr=False):
     Returns:
         np.ndarray: Flow visualization image of shape [H,W,3]
     """
-    flow_image = np.zeros((u.shape[0], u.shape[1], 3), np.uint8)
-    colorwheel = make_colorwheel()  # shape [55x3]
+    max_value = 2 ** color_depth
+    flow_image = np.zeros((u.shape[0], u.shape[1], 3), {8: np.uint8, 16: np.uint16}[color_depth])
+    colorwheel = make_colorwheel(color_depth=color_depth)  # shape [55x3]
     ncols = colorwheel.shape[0]
     rad = np.sqrt(np.square(u) + np.square(v))
     a = np.arctan2(-v, -u)/np.pi
@@ -94,19 +98,19 @@ def flow_uv_to_colors(u, v, convert_to_bgr=False):
     f = fk - k0
     for i in range(colorwheel.shape[1]):
         tmp = colorwheel[:,i]
-        col0 = tmp[k0] / 255.0
-        col1 = tmp[k1] / 255.0
+        col0 = tmp[k0] / float(max_value)
+        col1 = tmp[k1] / float(max_value)
         col = (1-f)*col0 + f*col1
         idx = (rad <= 1)
         col[idx]  = 1 - rad[idx] * (1-col[idx])
         col[~idx] = col[~idx] * 0.75   # out of range
         # Note the 2-i => BGR instead of RGB
         ch_idx = 2-i if convert_to_bgr else i
-        flow_image[:,:,ch_idx] = np.floor(255 * col)
+        flow_image[:,:,ch_idx] = np.floor(max_value * col)
     return flow_image
 
 
-def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False):
+def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False, color_depth=8):
     """
     Expects a two dimensional flow image of shape.
 
@@ -126,7 +130,9 @@ def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False):
     v = flow_uv[:,:,1]
     rad = np.sqrt(np.square(u) + np.square(v))
     rad_max = np.max(rad)
+    if clip_flow is not None:
+        rad_max = clip_flow
     epsilon = 1e-5
     u = u / (rad_max + epsilon)
     v = v / (rad_max + epsilon)
-    return flow_uv_to_colors(u, v, convert_to_bgr)
+    return flow_uv_to_colors(u, v, convert_to_bgr, color_depth), rad_max

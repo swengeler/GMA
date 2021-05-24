@@ -1,5 +1,5 @@
 import sys
-sys.path.append('core')
+sys.path.append('gma')
 
 from PIL import Image
 import argparse
