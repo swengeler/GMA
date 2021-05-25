@@ -63,6 +63,8 @@ def demo(args):
     if not os.path.exists(flow_dir):
         os.makedirs(flow_dir)
 
+    all_flow_below_one = []
+
     video_reader = cv2.VideoCapture(args.video_path)
     ret, frame_previous = video_reader.read()
     frame_previous = convert_frame(frame_previous, device)
@@ -115,8 +117,10 @@ def demo(args):
                 start_data_saving_time = time.time()
                 flo = flow_up.permute(0, 2, 3, 1).cpu().numpy()
                 for f_idx, f in enumerate(flo):
+                    flow_below_one = np.sum(np.linalg.norm(np.reshape(f, (-1, 2)), axis=1) < 1)
+                    all_flow_below_one.append(flow_below_one)
                     # f, rad_max = flow_viz.flow_to_image(f, clip_magnitude=args.flow_max)
-                    f = convert_to_frame(f, max_value=100)
+                    f = convert_to_frame(f, max_value=args.flow_max)
                     cv2.imwrite(os.path.join(args.path, args.model_name, f"{processed_frame_counter+f_idx:04d}.png"), f)
                     video_writer.write(f)
                     # all_rad_max.append(rad_max)
@@ -154,6 +158,13 @@ def demo(args):
 
     plt.boxplot(all_rad_max)
     plt.savefig("new_imgs/rad_max_box.png")
+
+    all_flow_below_one = np.array(all_flow_below_one)
+    np.save("new_imgs/flow_below_one_pixel.npy", all_flow_below_one)
+    plt.plot(np.arange(len(all_flow_below_one))[~np.isnan(all_flow_below_one)],
+             all_flow_below_one[~np.isnan(all_flow_below_one)])
+    plt.savefig("new_imgs/flow_below_one_pixel.png")
+    plt.clf()
 
 
 if __name__ == '__main__':
