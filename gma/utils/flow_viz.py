@@ -139,9 +139,9 @@ def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False, color_depth=8, 
         v[where] /= clipped_rad + epsilon
         u[~where] /= rad_max + epsilon
         v[~where] /= rad_max + epsilon
-        print("uV:", np.max(u), np.max(v))
+        # print("UV:", np.max(u), np.max(v))
         sanity_check = np.sqrt(np.square(u) + np.square(v))
-        print("snanitych eck:", np.max(sanity_check))
+        # print("Sanity check:", np.max(sanity_check))
     else:
         u = u / (rad_max + epsilon)
         v = v / (rad_max + epsilon)

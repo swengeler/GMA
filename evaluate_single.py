@@ -31,7 +31,7 @@ def viz(img, flo, flow_dir):
     np.save(os.path.join(flow_dir, 'flo_numpy.npy'), flo, allow_pickle=True)
 
     # map flow to rgb image
-    flo = flow_viz.flow_to_image(flo, color_depth=16)
+    flo, _ = flow_viz.flow_to_image(flo, color_depth=16)
     print(flo.dtype)
 
     imageio.imwrite(os.path.join(flow_dir, 'flo.png'), flo, bits=16)

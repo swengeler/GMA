@@ -31,6 +31,21 @@ def viz(img, flo, flow_dir, frame_counter):
     return flo
 
 
+def convert_to_frame(flo, max_value=None, preserve_direction=False):
+    if max_value is None:
+        max_value = np.max(flo)
+
+    if not preserve_direction:
+        flo = np.clip(flo, -max_value, max_value)
+        flo = flo / (max_value * 2)
+    else:
+        pass
+
+    frame = (flo * 255.0 + 127.0).astype(np.uint8)
+    frame = np.concatenate((frame, np.zeros(frame.shape[:2] + (1,), dtype=np.uint8)), axis=2)
+    return frame
+
+
 def demo(args):
     device = "cpu"
     if args.gpu is not None:
@@ -60,7 +75,7 @@ def demo(args):
     batch_frames = []
 
     video_writer = cv2.VideoWriter(
-        os.path.join(args.path, "flow_out_wtf.mp4"),
+        os.path.join(args.path, f"{args.out_name}.mp4"),
         cv2.VideoWriter_fourcc(*"mp4v"),
         60.0 / args.subsampling_factor, (800, 600), True,
     )
@@ -100,10 +115,11 @@ def demo(args):
                 start_data_saving_time = time.time()
                 flo = flow_up.permute(0, 2, 3, 1).cpu().numpy()
                 for f_idx, f in enumerate(flo):
-                    f, rad_max = flow_viz.flow_to_image(f, clip_magnitude=args.flow_max)
+                    # f, rad_max = flow_viz.flow_to_image(f, clip_magnitude=args.flow_max)
+                    f = convert_to_frame(f, max_value=100)
                     cv2.imwrite(os.path.join(args.path, args.model_name, f"{processed_frame_counter+f_idx:04d}.png"), f)
                     video_writer.write(f)
-                    all_rad_max.append(rad_max)
+                    # all_rad_max.append(rad_max)
                 data_saving_time += time.time() - start_data_saving_time
 
                 processed_frame_counter += len(batch) - 1
@@ -116,9 +132,6 @@ def demo(args):
 
                 batch = batch[-1:]
                 batch_frames = batch_frames[-1:]
-
-            if processed_frame_counter >= 80:
-                break
 
             if not ret:
                 break
@@ -150,6 +163,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model', help="restore checkpoint")
     parser.add_argument('--model_name', help="define model name", default="GMA")
+    parser.add_argument('--out_name', help="name of the output video", default="flow")
     parser.add_argument('--path', help="dataset for evaluation")
     parser.add_argument('--video_path', help="video to computer flow for")
     parser.add_argument('--gpu', type=int, help="index of GPU to use (if not specified, CPU is used)")
