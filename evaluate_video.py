@@ -52,9 +52,9 @@ def opencv_encoding(flo, max_value=None, **kwargs):
 
     mag, ang = cv2.cartToPolar(flo[:, :, 0], flo[:, :, 1])
 
-    frame = np.zeros(flo.shape + (3,), dtype=np.uint8)
+    frame = np.zeros(flo.shape[:2] + (3,), dtype=np.uint8)
     frame[:, :, 2] = 255
-    frame[:, :, 0] = (255.0 * ang / (2 * np.pi)).astype(np.uint8)
+    frame[:, :, 0] = (180.0 * ang / (2 * np.pi)).astype(np.uint8)
     frame[:, :, 1] = (255.0 * np.clip(mag, 0, max_value) / max_value).astype(np.uint8)
     frame = cv2.cvtColor(frame, cv2.COLOR_HSV2RGB)
 
@@ -166,28 +166,30 @@ def demo(args):
     video_reader.release()
     video_writer.release()
 
-    print(f"\nrad_max max: {np.max(all_rad_max)}")
-    print(f"rad_max mean: {np.mean(all_rad_max)}")
-    print(f"rad_max median: {np.median(all_rad_max)}")
+    if len(all_rad_max) > 0:
+        print(f"\nrad_max max: {np.max(all_rad_max)}")
+        print(f"rad_max mean: {np.mean(all_rad_max)}")
+        print(f"rad_max median: {np.median(all_rad_max)}")
 
-    pcts = [99, 97, 95] + list(range(90, 40, -10))
-    percentiles = np.percentile(all_rad_max, pcts)
-    print(f"\nPercentiles: {pcts}")
-    print(f"             {percentiles.tolist()}")
+        pcts = [99, 97, 95] + list(range(90, 40, -10))
+        percentiles = np.percentile(all_rad_max, pcts)
+        print(f"\nPercentiles: {pcts}")
+        print(f"             {percentiles.tolist()}")
 
-    plt.scatter(np.random.randn(len(all_rad_max)), all_rad_max)
-    plt.savefig("new_imgs/rad_max_dist.png")
-    plt.clf()
+        plt.scatter(np.random.randn(len(all_rad_max)), all_rad_max)
+        plt.savefig("new_imgs/rad_max_dist.png")
+        plt.clf()
 
-    plt.boxplot(all_rad_max)
-    plt.savefig("new_imgs/rad_max_box.png")
+        plt.boxplot(all_rad_max)
+        plt.savefig("new_imgs/rad_max_box.png")
 
-    all_flow_below_one = np.array(all_flow_below_one)
-    np.save(f"new_imgs/{args.out_name}_fbop.npy", all_flow_below_one)
-    plt.plot(np.arange(len(all_flow_below_one))[~np.isnan(all_flow_below_one)],
-             all_flow_below_one[~np.isnan(all_flow_below_one)])
-    plt.savefig(f"new_imgs/{args.out_name}_fbop.png")
-    plt.clf()
+    if len(all_flow_below_one) > 0:
+        all_flow_below_one = np.array(all_flow_below_one)
+        np.save(f"new_imgs/{args.out_name}_fbop.npy", all_flow_below_one)
+        plt.plot(np.arange(len(all_flow_below_one))[~np.isnan(all_flow_below_one)],
+                 all_flow_below_one[~np.isnan(all_flow_below_one)])
+        plt.savefig(f"new_imgs/{args.out_name}_fbop.png")
+        plt.clf()
 
 
 if __name__ == '__main__':
