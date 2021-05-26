@@ -56,7 +56,7 @@ def opencv_encoding(flo, max_value=None, **kwargs):
     frame[:, :, 2] = 255
     frame[:, :, 0] = (255.0 * ang / (2 * np.pi)).astype(np.uint8)
     frame[:, :, 1] = (255.0 * np.clip(mag, 0, max_value) / max_value).astype(np.uint8)
-    frame = cv2.cvtColor(frame, cv2.COLOR_HSV2BGR)
+    frame = cv2.cvtColor(frame, cv2.COLOR_HSV2RGB)
 
     return frame
 
@@ -121,7 +121,7 @@ def demo(args):
                 if frame_counter % args.subsampling_factor == 0:
                     start_data_loading_time = time.time()
                     # print(f"Loading (flow) frame {frame_counter:03d}")
-                    frame_current = convert_frame(frame_current, device)
+                    frame_current = convert_frame(cv2.cvtColor(frame_current, cv2.COLOR_BGR2RGB), device)
                     frame_current = padder.pad(frame_current)[0]
                     batch.append(frame_current)
                     batch_frames.append(frame_counter)
@@ -143,7 +143,7 @@ def demo(args):
                     all_flow_below_one.append(flow_below_one)
                     # f, rad_max = flow_viz.flow_to_image(f, clip_magnitude=args.flow_max)
                     # f = direct_encoding(f, max_value=args.flow_max)
-                    f = encoding_func(f, max_value=args.flow_max)
+                    f = cv2.cvtColor(encoding_func(f, max_value=args.flow_max), cv2.COLOR_RGB2BGR)
                     cv2.imwrite(os.path.join(args.path, args.model_name, f"{processed_frame_counter+f_idx:04d}.png"), f)
                     video_writer.write(f)
                     # all_rad_max.append(rad_max)

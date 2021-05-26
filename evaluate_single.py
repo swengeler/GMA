@@ -19,6 +19,7 @@ DEVICE = "cpu"
 
 def load_image(imfile):
     img = np.array(Image.open(imfile)).astype(np.uint8)
+    # img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     # img = cv2.resize(img, (400, 300))
     img = torch.from_numpy(img).permute(2, 0, 1).float()
     return img[None].to(DEVICE)
