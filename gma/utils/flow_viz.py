@@ -110,7 +110,7 @@ def flow_uv_to_colors(u, v, convert_to_bgr=False, color_depth=8):
     return flow_image
 
 
-def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False, color_depth=8, clip_magnitude=None):
+def flow_to_image(flow_uv, clip_flow=None, convert_to_bgr=False, color_depth=8, clip_magnitude=None, **kwargs):
     """
     Expects a two dimensional flow image of shape.
 

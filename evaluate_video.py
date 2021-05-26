@@ -31,7 +31,7 @@ def viz(img, flo, flow_dir, frame_counter):
     return flo
 
 
-def convert_to_frame(flo, max_value=None, preserve_direction=False):
+def direct_encoding(flo, max_value=None, preserve_direction=False, **kwargs):
     if max_value is None:
         max_value = np.max(flo)
 
@@ -43,6 +43,21 @@ def convert_to_frame(flo, max_value=None, preserve_direction=False):
 
     frame = (flo * 255.0 + 127.0).astype(np.uint8)
     frame = np.concatenate((frame, np.zeros(frame.shape[:2] + (1,), dtype=np.uint8)), axis=2)
+    return frame
+
+
+def opencv_encoding(flo, max_value=None, **kwargs):
+    if max_value is None:
+        max_value = np.max(flo)
+
+    mag, ang = cv2.cartToPolar(flo[:, :, 0], flo[:, :, 1])
+
+    frame = np.zeros(flo.shape + (3,), dtype=np.uint8)
+    frame[:, :, 2] = 255
+    frame[:, :, 0] = (255.0 * ang / (2 * np.pi)).astype(np.uint8)
+    frame[:, :, 1] = (255.0 * np.clip(mag, 0, max_value) / max_value).astype(np.uint8)
+    frame = cv2.cvtColor(frame, cv2.COLOR_HSV2BGR)
+
     return frame
 
 
@@ -82,6 +97,13 @@ def demo(args):
         60.0 / args.subsampling_factor, (800, 600), True,
     )
 
+    encoding_func = {
+        "direct": direct_encoding,
+        "gma": lambda x, *regargs, **kwargs: flow_viz.flow_to_image(
+            x, *regargs, **kwargs, clip_magnitude=kwargs.get("max_value", None))[0],
+        "opencv": opencv_encoding,
+    }[args.encoding]
+
     all_rad_max = []
 
     start = time.time()
@@ -120,7 +142,8 @@ def demo(args):
                     flow_below_one = np.sum(np.linalg.norm(np.reshape(f, (-1, 2)), axis=1) < 1)
                     all_flow_below_one.append(flow_below_one)
                     # f, rad_max = flow_viz.flow_to_image(f, clip_magnitude=args.flow_max)
-                    f = convert_to_frame(f, max_value=args.flow_max)
+                    # f = direct_encoding(f, max_value=args.flow_max)
+                    f = encoding_func(f, max_value=args.flow_max)
                     cv2.imwrite(os.path.join(args.path, args.model_name, f"{processed_frame_counter+f_idx:04d}.png"), f)
                     video_writer.write(f)
                     # all_rad_max.append(rad_max)
@@ -160,10 +183,10 @@ def demo(args):
     plt.savefig("new_imgs/rad_max_box.png")
 
     all_flow_below_one = np.array(all_flow_below_one)
-    np.save("new_imgs/flow_below_one_pixel.npy", all_flow_below_one)
+    np.save(f"new_imgs/{args.out_name}_fbop.npy", all_flow_below_one)
     plt.plot(np.arange(len(all_flow_below_one))[~np.isnan(all_flow_below_one)],
              all_flow_below_one[~np.isnan(all_flow_below_one)])
-    plt.savefig("new_imgs/flow_below_one_pixel.png")
+    plt.savefig(f"new_imgs/{args.out_name}_fbop.png")
     plt.clf()
 
 
@@ -181,6 +204,8 @@ if __name__ == '__main__':
     parser.add_argument('--flow_max', type=float, help="maximum flow to use for normalization")
     parser.add_argument('--subsampling_factor', type=int, default=1,
                         help="factor by which to subsample video in time dimension")
+    parser.add_argument('--encoding', default="direct", choices=["direct", "gma", "opencv"],
+                        help="encoding for the flow output")
     parser.add_argument('--batch_size', type=int, default=4,
                         help="batch size for GPU inference")
     parser.add_argument('--num_heads', default=1, type=int,
