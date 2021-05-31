@@ -70,7 +70,7 @@ def demo(args):
     model.load_state_dict(torch.load(args.model, map_location=device))
     print(f"Loaded checkpoint at {args.model}")
 
-    model = model.module
+    # model = model.module
     model.to(device)
     # model.cuda()
     model.eval()
@@ -82,10 +82,10 @@ def demo(args):
     all_flow_below_one = []
 
     video_reader = cv2.VideoCapture(args.video_path)
-    ret, frame_previous = video_reader.read()
-    frame_previous = convert_frame(frame_previous, device)
-    padder = InputPadder(frame_previous.shape)
-    # frame_previous = padder.pad(frame_previous)[0]
+    w, h, fps = (video_reader.get(i) for i in range(3, 6))
+    w, h = int(w), int(h)
+    padder = InputPadder((h, w, 3))
+
     frame_counter = 0
     processed_frame_counter = 0
 
@@ -95,7 +95,7 @@ def demo(args):
     video_writer = cv2.VideoWriter(
         os.path.join(args.path, f"{args.out_name}.mp4"),
         cv2.VideoWriter_fourcc(*"mp4v"),
-        60.0 / args.subsampling_factor, (800, 600), True,
+        fps / args.subsampling_factor, (w, h), True,
     )
 
     encoding_func = {
@@ -145,7 +145,7 @@ def demo(args):
                     # f, rad_max = flow_viz.flow_to_image(f, clip_magnitude=args.flow_max)
                     # f = direct_encoding(f, max_value=args.flow_max)
                     f = cv2.cvtColor(encoding_func(f, max_value=args.flow_max), cv2.COLOR_RGB2BGR)
-                    cv2.imwrite(os.path.join(args.path, args.model_name, f"{processed_frame_counter+f_idx:04d}.png"), f)
+                    # cv2.imwrite(os.path.join(args.path, args.model_name, f"{processed_frame_counter+f_idx:04d}.png"), f)
                     video_writer.write(f)
                     # all_rad_max.append(rad_max)
                 data_saving_time += time.time() - start_data_saving_time
@@ -153,10 +153,12 @@ def demo(args):
                 processed_frame_counter += len(batch) - 1
 
                 time_total = time.time() - start
+                """
                 print(f"Processed frames {min(batch_frames):04d} - {max(batch_frames):04d} (#frames = {len(batch)}, "
                       f"{processed_frame_counter / time_total:02.4f} FPS) - Time spent on loading, inference, saving: "
                       f"{data_loading_time / time_total * 100:02.2f}%, {inference_time / time_total * 100:02.2f}%, "
                       f"{data_saving_time / time_total * 100:02.2f}%")
+                """
 
                 batch = batch[-1:]
                 batch_frames = batch_frames[-1:]
