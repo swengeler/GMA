@@ -9,6 +9,8 @@ import imageio
 import matplotlib.pyplot as plt
 import time
 
+from skimage.color import hsv2rgb
+
 from gma.network import RAFTGMA
 from gma.utils import flow_viz
 from gma.utils.utils import InputPadder
@@ -61,6 +63,21 @@ def opencv_encoding(flo, max_value=None, **kwargs):
     return frame
 
 
+def test_16bit_encoding(flo, max_value=None):
+    if max_value is None:
+        max_value = np.max(flo)
+
+    mag, ang = cv2.cartToPolar(flo[:, :, 0], flo[:, :, 1])
+
+    frame = np.zeros(flo.shape[:2] + (3,), dtype=np.float64)
+    frame[:, :, 2] = 1.0
+    frame[:, :, 0] = ang / (2 * np.pi)
+    frame[:, :, 1] = np.clip(mag, 0, max_value) / max_value
+    frame = ((2**16 - 1) * hsv2rgb(frame)).astype(np.uint16)
+
+    return frame
+
+
 def demo(args):
     device = "cpu"
     if args.gpu is not None:
@@ -84,8 +101,9 @@ def demo(args):
     video_reader = cv2.VideoCapture(args.video_path)
     w, h, fps = (video_reader.get(i) for i in range(3, 6))
     w, h = int(w), int(h)
-    padder = InputPadder((h, w, 3))
+    padder = InputPadder((h, w))
 
+    ret = True
     frame_counter = 0
     processed_frame_counter = 0
 
@@ -144,8 +162,10 @@ def demo(args):
                     all_flow_below_one.append(flow_below_one)
                     # f, rad_max = flow_viz.flow_to_image(f, clip_magnitude=args.flow_max)
                     # f = direct_encoding(f, max_value=args.flow_max)
+                    if args.save_png:
+                        cv2.imwrite(os.path.join(args.path, args.model_name,
+                                                 f"{processed_frame_counter+f_idx:04d}.png"), test_16bit_encoding(f))
                     f = cv2.cvtColor(encoding_func(f, max_value=args.flow_max), cv2.COLOR_RGB2BGR)
-                    # cv2.imwrite(os.path.join(args.path, args.model_name, f"{processed_frame_counter+f_idx:04d}.png"), f)
                     video_writer.write(f)
                     # all_rad_max.append(rad_max)
                 data_saving_time += time.time() - start_data_saving_time
@@ -213,6 +233,7 @@ if __name__ == '__main__':
                         help="encoding for the flow output")
     parser.add_argument('--batch_size', type=int, default=4,
                         help="batch size for GPU inference")
+    parser.add_argument('--save_png', action='store_true', help='save as png as well')
     parser.add_argument('--num_heads', default=1, type=int,
                         help='number of heads in attention and aggregation')
     parser.add_argument('--position_only', default=False, action='store_true',
