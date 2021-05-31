@@ -64,14 +64,15 @@ def opencv_encoding(flo, max_value=None, **kwargs):
 def demo(args):
     device = "cpu"
     if args.gpu is not None:
-        device = f"cuda:{args.gpu}"
+        device = f"cuda:{args.gpu[0]}"
 
-    model = torch.nn.DataParallel(RAFTGMA(args))
+    model = torch.nn.DataParallel(RAFTGMA(args), device_ids=None if args.gpu is None else args.gpu)
     model.load_state_dict(torch.load(args.model, map_location=device))
     print(f"Loaded checkpoint at {args.model}")
 
     model = model.module
     model.to(device)
+    # model.cuda()
     model.eval()
 
     flow_dir = os.path.join(args.path, args.model_name)
@@ -202,7 +203,7 @@ if __name__ == '__main__':
     parser.add_argument('--out_name', help="name of the output video", default="flow")
     parser.add_argument('--path', help="dataset for evaluation")
     parser.add_argument('--video_path', help="video to computer flow for")
-    parser.add_argument('--gpu', type=int, help="index of GPU to use (if not specified, CPU is used)")
+    parser.add_argument('--gpu', type=int, nargs="+", help="index of GPU to use (if not specified, CPU is used)")
     parser.add_argument('--flow_max', type=float, help="maximum flow to use for normalization")
     parser.add_argument('--subsampling_factor', type=int, default=1,
                         help="factor by which to subsample video in time dimension")
